@@ -219,8 +219,16 @@ class FilesProvider implements IFullTextSearchProvider {
 			)
 		);
 
+		$template->addPanelOption(new SearchOption('tags.doctype', "Document Type", ISearchOption::GROUPLABEL));
+		$template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:other"), 'Other (5)', ISearchOption::CHECKBOX));
+		$template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:cv"), 'CV (1)', ISearchOption::CHECKBOX));
+
 		return $template;
 	}
+
+	private function encodeFilter(string $field, string $value): string {
+	    return json_encode(["filter" => [$field => $value]]);
+    }
 
 
 	/**
