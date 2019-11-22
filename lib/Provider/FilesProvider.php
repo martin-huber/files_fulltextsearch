@@ -163,8 +163,11 @@ class FilesProvider implements IFullTextSearchProvider {
 
 		$template->addPanelOption(
 			new SearchOption(
-				'files_local', $this->l10n->t('Within local files'),
-				ISearchOption::CHECKBOX
+				'files_local',
+                $this->l10n->t('Within local files'),
+				ISearchOption::CHECKBOX,
+                '',
+                'checked'
 			)
 		);
 		$template->addNavigationOption(
