@@ -629,6 +629,9 @@ class FilesService {
 
 		try {
 			$this->updateFilesDocumentFromFile($document, $file);
+			if ($file->getType() ===  FileInfo::TYPE_FOLDER) {
+                $document->getIndex()->setStatus(IIndex::INDEX_IGNORE);
+            }
 		} catch (FileIsNotIndexableException $e) {
 			$document->getIndex()
 					 ->setStatus(IIndex::INDEX_IGNORE);

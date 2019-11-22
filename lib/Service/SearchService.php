@@ -254,6 +254,10 @@ class SearchService {
 		$path = $this->withoutEndSlash(substr($file->getPath(), 7 + strlen($this->userId)));
 		$pathInfo = pathinfo($path);
 
+		if ($pathInfo['basename'] === '' || $pathInfo['dirname'] === '') {
+		    return;
+        }
+
 		$document->setPath($path);
 		$document->setInfo('path', $path)
 				 ->setInfo('type', $file->getType())
