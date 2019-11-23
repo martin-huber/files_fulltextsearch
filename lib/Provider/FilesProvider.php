@@ -229,19 +229,9 @@ class FilesProvider implements IFullTextSearchProvider
         $template->addPanelOption(new SearchOption('files_extension', $this->l10n->t('Filter by extension'),
             ISearchOption::INPUT, ISearchOption::INPUT_SMALL, 'txt'));
 
-        $template->addPanelOption(new SearchOption('tags.doctype', "Document Type",
-            ISearchOption::GROUPLABEL));
-        $template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:other"), 'Other (5)',
-            ISearchOption::CHECKBOX));
-        $template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:cv"), 'CV (1)',
-            ISearchOption::CHECKBOX));
+        $template->addPanelOption(new SearchOption('aggregations_container', "Facets",
+            ISearchOption::GROUPLABEL, ISearchOption::HIDDEN));
     }
-
-    private function encodeFilter(string $field, string $value): string
-    {
-        return json_encode(["filter" => [$field => $value]]);
-    }
-
 
     /**
      *
