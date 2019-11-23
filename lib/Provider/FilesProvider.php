@@ -60,319 +60,343 @@ use OCP\IL10N;
  *
  * @package OCA\Files_FullTextSearch\Provider
  */
-class FilesProvider implements IFullTextSearchProvider {
+class FilesProvider implements IFullTextSearchProvider
+{
 
 
-	const FILES_PROVIDER_ID = 'files';
+    const FILES_PROVIDER_ID = 'files';
 
 
-	/** @var IL10N */
-	private $l10n;
+    /** @var IL10N */
+    private $l10n;
 
-	/** @var ConfigService */
-	private $configService;
+    /** @var ConfigService */
+    private $configService;
 
-	/** @var FilesService */
-	private $filesService;
+    /** @var FilesService */
+    private $filesService;
 
-	/** @var SearchService */
-	private $searchService;
+    /** @var SearchService */
+    private $searchService;
 
-	/** @var ExtensionService */
-	private $extensionService;
+    /** @var ExtensionService */
+    private $extensionService;
 
-	/** @var MiscService */
-	private $miscService;
+    /** @var MiscService */
+    private $miscService;
 
-	/** @var IRunner */
-	private $runner;
+    /** @var IRunner */
+    private $runner;
 
-	/** @var IIndexOptions */
-	private $indexOptions = [];
-
-
-	public function __construct(
-		IL10N $l10n, ConfigService $configService, FilesService $filesService,
-		SearchService $searchService, ExtensionService $extensionService, MiscService $miscService
-	) {
-		$this->l10n = $l10n;
-		$this->configService = $configService;
-		$this->filesService = $filesService;
-		$this->searchService = $searchService;
-		$this->extensionService = $extensionService;
-		$this->miscService = $miscService;
-	}
+    /** @var IIndexOptions */
+    private $indexOptions = [];
 
 
-	/**
-	 * return unique id of the provider
-	 */
-	public function getId(): string {
-		return self::FILES_PROVIDER_ID;
-	}
-
-
-	/**
-	 * return name of the provider
-	 */
-	public function getName(): string {
-		return 'Files';
-	}
-
-
-	/**
-	 * @return array
-	 */
-	public function getConfiguration(): array {
-		$config = $this->configService->getConfig();
-		$this->extensionService->getConfig($config);
-
-		return $config;
-	}
-
-
-	/**
-	 * @param IRunner $runner
-	 */
-	public function setRunner(IRunner $runner) {
-		$this->runner = $runner;
-		$this->filesService->setRunner($runner);
-	}
-
-
-	/**
-	 * @param IIndexOptions $options
-	 */
-	public function setIndexOptions(IIndexOptions $options) {
-		$this->indexOptions = $options;
-	}
-
-
-	/**
-	 * @return ISearchTemplate
-	 */
-	public function getSearchTemplate(): ISearchTemplate {
-		$template = new SearchTemplate('icon-fts-files', 'fulltextsearch');
-
-		$template->addPanelOption(
-			new SearchOption(
-				'files_within_dir', $this->l10n->t('Within current directory'),
-				ISearchOption::CHECKBOX
-			)
-		);
-
-		$template->addPanelOption(
-			new SearchOption(
-				'files_local',
-                $this->l10n->t('Within local files'),
-				ISearchOption::CHECKBOX,
-                '',
-                'checked'
-			)
-		);
-		$template->addNavigationOption(
-			new SearchOption(
-				'files_local', $this->l10n->t('Local files'),
-				ISearchOption::CHECKBOX
-			)
-		);
-
-		if ($this->configService->getAppValue(ConfigService::FILES_EXTERNAL) === '1') {
-			$template->addPanelOption(
-				new SearchOption(
-					'files_external', $this->l10n->t('Within external files'),
-					ISearchOption::CHECKBOX
-				)
-			);
-			$template->addNavigationOption(
-				new SearchOption(
-					'files_external', $this->l10n->t('External files'), ISearchOption::CHECKBOX
-				)
-			);
-		}
-
-		if ($this->configService->getAppValue(ConfigService::FILES_GROUP_FOLDERS) === '1') {
-			$template->addPanelOption(
-				new SearchOption(
-					'files_group_folders', $this->l10n->t('Within group folders'),
-					ISearchOption::CHECKBOX
-				)
-			);
-			$template->addNavigationOption(
-				new SearchOption(
-					'files_group_folders', $this->l10n->t('Group folders'),
-					ISearchOption::CHECKBOX
-				)
-			);
-		}
-
-		$template->addPanelOption(
-			new SearchOption(
-				'files_extension', $this->l10n->t('Filter by extension'), ISearchOption::INPUT,
-				ISearchOption::INPUT_SMALL, 'txt'
-			)
-		);
-		$template->addNavigationOption(
-			new SearchOption(
-				'files_extension', $this->l10n->t('Extension'), ISearchOption::INPUT,
-				ISearchOption::INPUT_SMALL, 'txt'
-			)
-		);
-
-		$template->addPanelOption(new SearchOption('tags.doctype', "Document Type", ISearchOption::GROUPLABEL));
-		$template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:other"), 'Other (5)', ISearchOption::CHECKBOX));
-		$template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:cv"), 'CV (1)', ISearchOption::CHECKBOX));
-
-		return $template;
-	}
-
-	private function encodeFilter(string $field, string $value): string {
-	    return json_encode(["filter" => [$field => $value]]);
+    public function __construct(
+        IL10N $l10n, ConfigService $configService, FilesService $filesService,
+        SearchService $searchService, ExtensionService $extensionService, MiscService $miscService
+    )
+    {
+        $this->l10n = $l10n;
+        $this->configService = $configService;
+        $this->filesService = $filesService;
+        $this->searchService = $searchService;
+        $this->extensionService = $extensionService;
+        $this->miscService = $miscService;
     }
 
 
-	/**
-	 *
-	 */
-	public function loadProvider() {
-	}
+    /**
+     * return unique id of the provider
+     */
+    public function getId(): string
+    {
+        return self::FILES_PROVIDER_ID;
+    }
 
 
-	/**
-	 * @param string $userId
-	 *
-	 * @return array
-	 * @throws InvalidPathException
-	 * @throws NotFoundException
-	 */
-	public function generateChunks(string $userId): array {
-		$chunks = $this->filesService->getChunksFromUser($userId, $this->indexOptions);
-
-		return $chunks;
-	}
+    /**
+     * return name of the provider
+     */
+    public function getName(): string
+    {
+        return 'Files';
+    }
 
 
-	/**
-	 * @param string $userId
-	 *
-	 * @param string $chunk
-	 *
-	 * @return IIndexDocument[]
-	 * @throws InvalidPathException
-	 * @throws NotFoundException
-	 */
-	public function generateIndexableDocuments(string $userId, string $chunk): array {
-		$files = $this->filesService->getFilesFromUser($userId, $chunk);
+    /**
+     * @return array
+     */
+    public function getConfiguration(): array
+    {
+        $config = $this->configService->getConfig();
+        $this->extensionService->getConfig($config);
 
-		return $files;
-	}
+        return $config;
+    }
 
 
-	/**
-	 * @param IIndexDocument $document
-	 */
-	public function fillIndexDocument(IIndexDocument $document) {
-		/** @var FilesDocument $document */
-		$this->updateRunnerInfoArray(
-			[
-				'info'  => $document->getMimetype(),
-				'title' => $document->getPath()
-			]
-		);
-
-		$this->filesService->generateDocument($document);
-	}
+    /**
+     * @param IRunner $runner
+     */
+    public function setRunner(IRunner $runner)
+    {
+        $this->runner = $runner;
+        $this->filesService->setRunner($runner);
+    }
 
 
-	/**
-	 * @param IIndexDocument $document
-	 *
-	 * @return bool
-	 */
-	public function isDocumentUpToDate(IIndexDocument $document): bool {
-		return $this->filesService->isDocumentUpToDate($document);
-	}
+    /**
+     * @param IIndexOptions $options
+     */
+    public function setIndexOptions(IIndexOptions $options)
+    {
+        $this->indexOptions = $options;
+    }
 
 
-	/**
-	 * @param IIndex $index
-	 *
-	 * @return IIndexDocument
-	 * @throws InvalidPathException
-	 * @throws NotFoundException
-	 * @throws FileIsNotIndexableException
-	 */
-	public function updateDocument(IIndex $index): IIndexDocument {
-		$document = $this->filesService->updateDocument($index);
-		$this->updateRunnerInfo('info', $document->getMimetype());
+    /**
+     * @return ISearchTemplate
+     */
+    public function getSearchTemplate(): ISearchTemplate
+    {
+        $template = new SearchTemplate('icon-fts-files', 'fulltextsearch');
+        $this->addNavigationOptions($template);
 
-		return $document;
-	}
+        $this->addPanelOptions($template);
+
+        return $template;
+    }
+
+    /**
+     * @param SearchTemplate $template
+     */
+    private function addNavigationOptions(SearchTemplate $template): void
+    {
+        $template->addNavigationOption(
+            new SearchOption(
+                'files_local', $this->l10n->t('Local files'),
+                ISearchOption::CHECKBOX
+            )
+        );
+        if ($this->configService->getAppValue(ConfigService::FILES_EXTERNAL) === '1') {
+            $template->addNavigationOption(
+                new SearchOption(
+                    'files_external', $this->l10n->t('External files'), ISearchOption::CHECKBOX
+                )
+            );
+        }
+        if ($this->configService->getAppValue(ConfigService::FILES_GROUP_FOLDERS) === '1') {
+            $template->addNavigationOption(
+                new SearchOption(
+                    'files_group_folders', $this->l10n->t('Group folders'),
+                    ISearchOption::CHECKBOX
+                )
+            );
+        }
+
+        $template->addNavigationOption(
+            new SearchOption(
+                'files_extension', $this->l10n->t('Extension'), ISearchOption::INPUT,
+                ISearchOption::INPUT_SMALL, 'txt'
+            )
+        );
+    }
+
+    /**
+     * @param SearchTemplate $template
+     */
+    private function addPanelOptions(SearchTemplate $template): void
+    {
+        $template->addPanelOption(new SearchOption('general', "Range and Extension",
+            ISearchOption::GROUPLABEL));
+        $template->addPanelOption(new SearchOption('files_within_dir', $this->l10n->t('Within current directory'),
+            ISearchOption::CHECKBOX));
+
+        $template->addPanelOption(new SearchOption('files_local', $this->l10n->t('Within local files'),
+            ISearchOption::CHECKBOX, '', 'checked'));
+
+        if ($this->configService->getAppValue(ConfigService::FILES_EXTERNAL) === '1') {
+            $template->addPanelOption(new SearchOption('files_external', $this->l10n->t('Within external files'),
+                ISearchOption::CHECKBOX));
+        }
+
+        if ($this->configService->getAppValue(ConfigService::FILES_GROUP_FOLDERS) === '1') {
+            $template->addPanelOption(new SearchOption('files_group_folders', $this->l10n->t('Within group folders'),
+                ISearchOption::CHECKBOX));
+        }
+
+        $template->addPanelOption(new SearchOption('files_extension', $this->l10n->t('Filter by extension'),
+            ISearchOption::INPUT, ISearchOption::INPUT_SMALL, 'txt'));
+
+        $template->addPanelOption(new SearchOption('tags.doctype', "Document Type",
+            ISearchOption::GROUPLABEL));
+        $template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:other"), 'Other (5)',
+            ISearchOption::CHECKBOX));
+        $template->addPanelOption(new SearchOption($this->encodeFilter("tags.doctype", "rbdta:doctype:cv"), 'CV (1)',
+            ISearchOption::CHECKBOX));
+    }
+
+    private function encodeFilter(string $field, string $value): string
+    {
+        return json_encode(["filter" => [$field => $value]]);
+    }
 
 
-	/**
-	 * @param IFullTextSearchPlatform $platform
-	 */
-	public function onInitializingIndex(IFullTextSearchPlatform $platform) {
-	}
+    /**
+     *
+     */
+    public function loadProvider()
+    {
+    }
 
 
-	/**
-	 * @param IFullTextSearchPlatform $platform
-	 */
-	public function onResettingIndex(IFullTextSearchPlatform $platform) {
-	}
+    /**
+     * @param string $userId
+     *
+     * @return array
+     * @throws InvalidPathException
+     * @throws NotFoundException
+     */
+    public function generateChunks(string $userId): array
+    {
+        $chunks = $this->filesService->getChunksFromUser($userId, $this->indexOptions);
+
+        return $chunks;
+    }
 
 
-	/**
-	 * not used yet
-	 */
-	public function unloadProvider() {
-	}
+    /**
+     * @param string $userId
+     *
+     * @param string $chunk
+     *
+     * @return IIndexDocument[]
+     * @throws InvalidPathException
+     * @throws NotFoundException
+     */
+    public function generateIndexableDocuments(string $userId, string $chunk): array
+    {
+        $files = $this->filesService->getFilesFromUser($userId, $chunk);
+
+        return $files;
+    }
 
 
-	/**
-	 * before a search, improve the request
-	 *
-	 * @param ISearchRequest $request
-	 */
-	public function improveSearchRequest(ISearchRequest $request) {
-		$this->searchService->improveSearchRequest($request);
-	}
+    /**
+     * @param IIndexDocument $document
+     */
+    public function fillIndexDocument(IIndexDocument $document)
+    {
+        /** @var FilesDocument $document */
+        $this->updateRunnerInfoArray(
+            [
+                'info' => $document->getMimetype(),
+                'title' => $document->getPath()
+            ]
+        );
+
+        $this->filesService->generateDocument($document);
+    }
 
 
-	/**
-	 * after a search, improve results
-	 *
-	 * @param ISearchResult $searchResult
-	 */
-	public function improveSearchResult(ISearchResult $searchResult) {
-		$this->searchService->improveSearchResult($searchResult);
-	}
+    /**
+     * @param IIndexDocument $document
+     *
+     * @return bool
+     */
+    public function isDocumentUpToDate(IIndexDocument $document): bool
+    {
+        return $this->filesService->isDocumentUpToDate($document);
+    }
 
 
-	/**
-	 * @param string $info
-	 * @param string $value
-	 */
-	private function updateRunnerInfo(string $info, string $value) {
-		if ($this->runner === null) {
-			return;
-		}
+    /**
+     * @param IIndex $index
+     *
+     * @return IIndexDocument
+     * @throws InvalidPathException
+     * @throws NotFoundException
+     * @throws FileIsNotIndexableException
+     */
+    public function updateDocument(IIndex $index): IIndexDocument
+    {
+        $document = $this->filesService->updateDocument($index);
+        $this->updateRunnerInfo('info', $document->getMimetype());
 
-		$this->runner->setInfo($info, $value);
-	}
+        return $document;
+    }
 
-	/**
-	 * @param array $info
-	 */
-	private function updateRunnerInfoArray(array $info) {
-		if ($this->runner === null) {
-			return;
-		}
 
-		$this->runner->setInfoArray($info);
-	}
+    /**
+     * @param IFullTextSearchPlatform $platform
+     */
+    public function onInitializingIndex(IFullTextSearchPlatform $platform)
+    {
+    }
 
+
+    /**
+     * @param IFullTextSearchPlatform $platform
+     */
+    public function onResettingIndex(IFullTextSearchPlatform $platform)
+    {
+    }
+
+
+    /**
+     * not used yet
+     */
+    public function unloadProvider()
+    {
+    }
+
+
+    /**
+     * before a search, improve the request
+     *
+     * @param ISearchRequest $request
+     */
+    public function improveSearchRequest(ISearchRequest $request)
+    {
+        $this->searchService->improveSearchRequest($request);
+    }
+
+
+    /**
+     * after a search, improve results
+     *
+     * @param ISearchResult $searchResult
+     */
+    public function improveSearchResult(ISearchResult $searchResult)
+    {
+        $this->searchService->improveSearchResult($searchResult);
+    }
+
+
+    /**
+     * @param string $info
+     * @param string $value
+     */
+    private function updateRunnerInfo(string $info, string $value)
+    {
+        if ($this->runner === null) {
+            return;
+        }
+
+        $this->runner->setInfo($info, $value);
+    }
+
+    /**
+     * @param array $info
+     */
+    private function updateRunnerInfoArray(array $info)
+    {
+        if ($this->runner === null) {
+            return;
+        }
+
+        $this->runner->setInfoArray($info);
+    }
 }
 
